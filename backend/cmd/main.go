@@ -1,11 +1,17 @@
-package main 
+package main
 
 import (
-	"tmaster/internal/config"
-	"github.com/joho/godotenv"
-	"os"
 	"log"
-	"fmt"
+	"net/http"
+	"os"
+	"tmaster/internal/api/handlers"
+	"tmaster/internal/api/router"
+	"tmaster/internal/auth"
+	"tmaster/internal/config"
+	"tmaster/internal/repository/postgres"
+	"tmaster/internal/service"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -15,7 +21,7 @@ func main() {
 	}
 
 	config_env := ""
-	switch os.Getenv("ENV"){
+	switch os.Getenv("ENV") {
 	case "local":
 		config_env = "CONFIG_PATH_BACKEND"
 	case "dev":
@@ -30,6 +36,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed init config with error %v\n", err)
 	}
-	
-	fmt.Println(cfg)
+
+	db, err := postgres.InitDB(cfg)
+
+	if err != nil {
+		log.Fatalf("failed init to db with error %v\n", err)
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+	JWTManager := auth.NewJWTManager(secret)
+
+	repo := postgres.NewRepo(db)
+	service := service.NewService(repo, JWTManager)
+	handler := handlers.NewHandler(service)
+	router := router.NewRouter(handler, JWTManager)
+
+	http.ListenAndServe(cfg.Server.Port, router)
 }
