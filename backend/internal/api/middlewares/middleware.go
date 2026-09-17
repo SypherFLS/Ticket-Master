@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
-	"tmaster/internal/api/helpers"
+	"tmaster/internal/api/utils/helpers"
+	"tmaster/internal/api/utils/selfwriter"
+	"tmaster/internal/auth"
 )
 
 type Middleware func(http.Handler) http.Handler
@@ -19,6 +21,15 @@ func Chain(h http.Handler, m ...Middleware) http.Handler {
 	return h
 }
 
+func CommonChain(h http.Handler, timeout int) http.Handler {
+	return Chain(
+		h,
+		LoggingMiddleware,
+		RecoverMiddleware,
+		TimeoutMiddleware(timeout),
+	)
+}
+
 func TimeoutMiddleware(timeout int) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +39,19 @@ func TimeoutMiddleware(timeout int) Middleware {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		current_time := time.Now()
+		sw := &selfwriter.SelfWriter{
+			ResponseWriter: w,
+			Code: 200,
+		}
+		log.Printf("handler %v started \n", r.URL.String())
+		next.ServeHTTP(sw, r)
+		log.Printf("handler %v finished with code %v and time %v \n", r.URL.Path, sw.Code, time.Since(current_time))
+	})
 }
 
 func RecoverMiddleware(next http.Handler) http.Handler {
@@ -45,4 +69,12 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func AuthMiddleware(jwtm *auth.JWTManager) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			
+		})
+	}
 }
