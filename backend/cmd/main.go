@@ -44,7 +44,7 @@ func main() {
 	}
 
 	secret := os.Getenv("JWT_SECRET")
-	JWTManager := auth.NewJWTManager(secret)
+	JWTManager := auth.NewJWTManager([]byte(secret))
 
 	repo := postgres.NewRepo(db)
 	service := service.NewService(repo, JWTManager)
