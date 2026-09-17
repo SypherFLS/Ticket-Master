@@ -7,5 +7,5 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL DEFAULT 'user',
 
     CONSTRAINT users_role_check
-        CHECK (role IN ('user', 'admin'))
+        CHECK (role IN ('user', 'operator'))
 );
