@@ -16,3 +16,5 @@ func (r *Repo) GetTicketsRepo(ctx context.Context, user_id int, limit int, offse
 func (r *Repo) CreateTicketRepo(ctx context.Context, ticket models.Ticket) error{
 	return r.db.WithContext(ctx).Create(ticket).Error
 }
+
+func (r *Repo) UpdateTicketStatusRepo(ctx context.Context, status string)
