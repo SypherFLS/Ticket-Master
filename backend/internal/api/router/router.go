@@ -9,6 +9,5 @@ import (
 func NewRouter(h *handlers.Handler, jwtm *auth.JWTManager) http.Handler{
 	mux := http.NewServeMux()
 
-
 	return mux
 }

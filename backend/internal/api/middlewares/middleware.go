@@ -5,8 +5,10 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 	"tmaster/internal/api/utils/helpers"
+	"tmaster/internal/api/utils/params"
 	"tmaster/internal/api/utils/selfwriter"
 	"tmaster/internal/auth"
 )
@@ -71,10 +73,31 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func AuthMiddleware(jwtm *auth.JWTManager) Middleware {
+const bearer = "Bearer "
+
+func AuthMiddleware(jwtManager *auth.JWTManager) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			
+			authHeader := r.Header.Get("Authorization")
+
+			if authHeader == "" {
+				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
+				return
+			}
+			if !strings.HasPrefix(authHeader, bearer) {
+				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
+				return
+			}
+
+			token := strings.TrimPrefix(authHeader, bearer)
+
+			userID, err := jwtManager.Validate(token)
+			if err != nil {
+				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
+				return
+			}
+			ctx := context.WithValue(r.Context(), params.UserIDKey, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
