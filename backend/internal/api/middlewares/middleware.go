@@ -91,13 +91,14 @@ func AuthMiddleware(jwtManager *auth.JWTManager) Middleware {
 
 			token := strings.TrimPrefix(authHeader, bearer)
 
-			userID, err := jwtManager.Validate(token)
+			userID, userRole, err := jwtManager.Validate(token)
 			if err != nil {
 				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
 				return
 			}
 			ctx := context.WithValue(r.Context(), params.UserIDKey, userID)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			ctx2 := context.WithValue(ctx, params.UserRoleKey, userRole)
+			next.ServeHTTP(w, r.WithContext(ctx2))
 		})
 	}
 }

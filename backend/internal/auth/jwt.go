@@ -19,13 +19,15 @@ func NewJWTManager(secret []byte) *JWTManager {
 
 type claims struct {
 	UserID int `json:"user_id"`
+	UserRole string `json:"user_role"`
 
 	jwt.RegisteredClaims
 }
 
-func (j *JWTManager) Generate(userID int) (string, error) {
+func (j *JWTManager) Generate(userID int, UserRole string) (string, error) {
 	claims := claims{
 		UserID : userID,
+		UserRole: UserRole,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(
 				time.Now().Add(24 * time.Hour),
@@ -40,7 +42,7 @@ func (j *JWTManager) Generate(userID int) (string, error) {
 	return token.SignedString(j.secret)
 }
 
-func (j *JWTManager) Validate(tokenString string) (int, error) {
+func (j *JWTManager) Validate(tokenString string) (int, string, error) {
 	claims := &claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims,
@@ -54,13 +56,13 @@ func (j *JWTManager) Validate(tokenString string) (int, error) {
 	)
 
 	if err != nil {
-		return 0, err
+		return 0,"", err
 	}
 
 	if !token.Valid {
-		return 0, apperrors.InvalidToken
+		return 0,"", apperrors.InvalidToken
 	}
 
-	return claims.UserID, nil
+	return claims.UserID, claims.UserRole, nil
 }
 

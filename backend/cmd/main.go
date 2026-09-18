@@ -49,7 +49,7 @@ func main() {
 	repo := postgres.NewRepo(db)
 	service := service.NewService(repo, JWTManager)
 	handler := handlers.NewHandler(service)
-	router := router.NewRouter(handler, JWTManager)
+	router := router.NewRouter(handler, JWTManager, cfg)
 
 	http.ListenAndServe(cfg.Server.Port, router)
 }
