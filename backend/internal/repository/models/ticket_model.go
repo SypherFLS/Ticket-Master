@@ -1,21 +1,18 @@
 package models
 
-import "time"
-
-type TicketStatus string
-
-const (
-	StatusNew     TicketStatus = "new"
-	StatusPending TicketStatus = "pending"
-	StatusClosed   TicketStatus = "closed"
+import (
+	"time"
+	"tmaster/internal/constants"
 )
+
+
 
 type Ticket struct {
 	ID          uint   `gorm:"primaryKey"`
 	Title       string `gorm:"not null"`
 	OperatorID  uint
 	Description string
-	Status      TicketStatus `gorm:"not null,default:new"`
+	Status      constants.TicketStatus `gorm:"not null,default:new"`
 	CreatedAt   time.Time
 	ClaimedAt   time.Time
 	ResolvedAt  time.Time
