@@ -7,7 +7,7 @@ type TicketStatus string
 const (
 	StatusNew     TicketStatus = "new"
 	StatusPending TicketStatus = "pending"
-	StatusClose   TicketStatus = "closed"
+	StatusClosed   TicketStatus = "closed"
 )
 
 type Ticket struct {
