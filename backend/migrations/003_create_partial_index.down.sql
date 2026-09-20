@@ -1,0 +1,1 @@
+DROP INDEX idx_tickets_new_queue;

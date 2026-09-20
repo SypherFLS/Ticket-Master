@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type TicketStatus string
 
 const (
@@ -9,11 +11,14 @@ const (
 )
 
 type Ticket struct {
-	ID          uint   `gorm:"primaryKey"`
-	Title       string `gorm:"not null"`
-	Description string	
-	Priority    string `gorm:"not null"`
-	Status      string `gorm:"not null,default:new"`
-	UserID      uint   `gorm:"not null;index"`
-	User        User   `gorm:"foreignKey:UserID"`
+	ID            uint   `gorm:"primaryKey"`
+	Title         string `gorm:"not null"`
+	WorkingUserID uint
+	Description   string
+	Status        TicketStatus `gorm:"not null,default:new"`
+	CreatedAt     time.Time
+	ClaimedAT     time.Time
+	ResolvedAT    time.Time
+	UserID        uint `gorm:"not null;index"`
+	User          User `gorm:"foreignKey:UserID"`
 }
