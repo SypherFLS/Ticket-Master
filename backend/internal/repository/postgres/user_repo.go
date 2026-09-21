@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"tmaster/internal/apperrors"
 	"tmaster/internal/constants"
 	"tmaster/internal/repository/models"
 )
@@ -21,9 +22,15 @@ func (r *Repo) GetLoginDataRepo(ctx context.Context, email string) (models.Login
 }
 
 func (r *Repo) SetRoleRepo(ctx context.Context,email string, role constants.UserRole) error { // rework jwt token
-	return r.db.WithContext(ctx).
+	res := r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("email = ?", email).
-		Update("role", role).Error
+		Update("role", role)
+
+	if res.RowsAffected == 0 {
+		return apperrors.NothingChanged
+	}
+
+	return res.Error
 }
 

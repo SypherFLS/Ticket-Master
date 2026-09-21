@@ -1,7 +1,7 @@
 CREATE TABLE tickets (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    operator_id BIGINT REFERENCES users(id)
+    operator_id BIGINT REFERENCES users(id),
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'new',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
