@@ -12,4 +12,3 @@ func NewRepo(db *gorm.DB) *Repo {
 	}
 }
 
-func (r *Repo) HealthCheck()

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 	"tmaster/internal/apperrors"
+	"tmaster/internal/constants"
 	"tmaster/internal/repository/models"
 
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func (r *Repo) GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, e
     var tickets []models.Ticket
 
     res := r.db.WithContext(ctx).
-        Where("status = ?", models.StatusNew).
+        Where("status = ?", constants.StatusNew).
         Order("created_at ASC, id ASC").
         Limit(limit).
         Find(&tickets)
@@ -38,7 +39,7 @@ func (r *Repo) GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, e
 func (r *Repo) ClaimNextTicketRepo(ctx context.Context, operatorID uint) (*models.Ticket, error) {
 	var ticket models.Ticket 
 	err := r.db.WithContext(ctx).Transaction(func (tx *gorm.DB) error {
-		result:=tx.Where("status = ?", models.StatusNew).
+		result:=tx.Where("status = ?", constants.StatusNew).
 		Order("created_at ASC, id ASC").
 		Clauses(clause.Locking{
 			Strength: "UPDATE",
@@ -57,7 +58,7 @@ func (r *Repo) ClaimNextTicketRepo(ctx context.Context, operatorID uint) (*model
 		now := time.Now()
 
 		res := tx.Model(&models.Ticket{}).Updates(map[string]any{
-			"status" : models.StatusPending,
+			"status" : constants.StatusPending,
 			"operator_id": operatorID,
             "claimed_at": now,
 		})
@@ -76,5 +77,5 @@ func (r *Repo) ClaimNextTicketRepo(ctx context.Context, operatorID uint) (*model
 } 
 
 func (r *Repo) CloseTicketRepo(ctx context.Context, ticket_id uint) error {
-	return r.db.WithContext(ctx).Model(&models.Ticket{}).Update("status", models.StatusClosed).Error
+	return r.db.WithContext(ctx).Model(&models.Ticket{}).Update("status", constants.StatusClosed).Error
 } 
