@@ -1,5 +1,9 @@
 package auth
 
+import (
+	"tmaster/internal/constants"
+)
+
 type Permission string
 
 const (
@@ -9,24 +13,36 @@ const (
 	PermissionTicketAssign    Permission = "ticket:assign"
 	PermissionTicketUpdate    Permission = "ticket:update"
 	PermissionUserManage      Permission = "user:manage"
+	PermissionTicketReadAll   Permission = "ticketread_all"
 )
 
-type UserRole string
 
-const (
-	RoleUser     UserRole = "user"
-	RoleOperator UserRole = "operator"
-	RoleAdmin    UserRole = "admin"
-)
+var RolePermission = map[constants.UserRole]map[Permission]struct{}{
+	constants.RoleUser: {
+		PermissionTicketCreate:  {},
+		PermissionTicketReadOwn: {},
+	},
+	constants.RoleOperator: {
+		PermissionTicketReadOwn:   {},
+		PermissionTicketAssign:    {},
+		PermissionTicketReadQueue: {},
+		PermissionTicketUpdate:    {},
+	},
+	constants.RoleAdmin: {
+		PermissionTicketReadAll: {},
+		PermissionTicketReadQueue: {},
+		PermissionUserManage: {},
+	},
+}
 
-var RolePermission = map[UserRole]map[Permission]struct{} {
-    RoleUser: {
 
-    },
-    RoleOperator: {
+func HasPermission(role constants.UserRole, permission Permission) bool {
+    permissions, exists := RolePermission[role]
+    if !exists {
+        return false
+    }
 
-    },
-    RoleAdmin: {
+    _, exists = permissions[permission]
 
-    },
+    return exists
 }
