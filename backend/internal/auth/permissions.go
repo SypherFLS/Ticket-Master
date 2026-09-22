@@ -7,15 +7,15 @@ import (
 type Permission string
 
 const (
-	PermissionTicketCreate    Permission = "ticket:create"
-	PermissionTicketReadOwn   Permission = "ticket:read_own"
-	PermissionTicketReadQueue Permission = "ticket:read_queue"
-	PermissionTicketAssign    Permission = "ticket:assign"
-	PermissionTicketUpdate    Permission = "ticket:update"
-	PermissionUserManage      Permission = "user:manage"
-	PermissionTicketReadAll   Permission = "ticketread_all"
+	PermissionTicketCreate     Permission = "ticket:create"
+	PermissionTicketReadOwn    Permission = "ticket:read_own"
+	PermissionTicketReadQueue  Permission = "ticket:read_queue"
+	PermissionTicketAssign     Permission = "ticket:assign"
+	PermissionTicketUpdate     Permission = "ticket:update"
+	PermissionTicketOwnClaimed Permission = "ticket:get_own_claimed"
+	PermissionUserManage       Permission = "user:manage"
+	PermissionTicketReadAll    Permission = "ticketread_all"
 )
-
 
 var RolePermission = map[constants.UserRole]map[Permission]struct{}{
 	constants.RoleUser: {
@@ -23,26 +23,25 @@ var RolePermission = map[constants.UserRole]map[Permission]struct{}{
 		PermissionTicketReadOwn: {},
 	},
 	constants.RoleOperator: {
-		PermissionTicketReadOwn:   {},
-		PermissionTicketAssign:    {},
-		PermissionTicketReadQueue: {},
-		PermissionTicketUpdate:    {},
+		PermissionTicketOwnClaimed: {},
+		PermissionTicketAssign:     {},
+		PermissionTicketReadQueue:  {},
+		PermissionTicketUpdate:     {},
 	},
 	constants.RoleAdmin: {
-		PermissionTicketReadAll: {},
+		PermissionTicketReadAll:   {},
 		PermissionTicketReadQueue: {},
-		PermissionUserManage: {},
+		PermissionUserManage:      {},
 	},
 }
 
-
 func HasPermission(role constants.UserRole, permission Permission) bool {
-    permissions, exists := RolePermission[role]
-    if !exists {
-        return false
-    }
+	permissions, exists := RolePermission[role]
+	if !exists {
+		return false
+	}
 
-    _, exists = permissions[permission]
+	_, exists = permissions[permission]
 
-    return exists
+	return exists
 }
