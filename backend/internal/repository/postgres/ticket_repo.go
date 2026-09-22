@@ -16,12 +16,25 @@ import (
 func (r *Repo) GetOwnTicketsRepo(ctx context.Context, user_id int, pagData dto.PaginationData) ([]models.Ticket, error) {
 	var tickets []models.Ticket
 
-	resp := r.db.Model(&models.Ticket{}).Where("user_id = ?", user_id).Limit(pagData.Limit).Offset(pagData.Offset).Find(&tickets)
+	resp := r.db.
+	Model(&models.Ticket{}).
+	Where("user_id = ?", user_id).
+	Order(clause.Expr{
+		SQL: "CASE status WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3 ELSE 4 END",
+		Vars : []interface{}{
+			constants.StatusNew,
+			constants.StatusPending,
+			constants.StatusClosed,
+		},
+	}).
+	Limit(pagData.Limit).
+	Offset(pagData.Offset).
+	Find(&tickets)
 
 	return tickets, resp.Error
 }
 
-func (r *Repo) CreateTicketRepo(ctx context.Context, ticket models.Ticket) error{
+func (r *Repo) CreateTicketRepo(ctx context.Context, ticket *models.Ticket) error{
 	return r.db.WithContext(ctx).Create(ticket).Error
 }
 
