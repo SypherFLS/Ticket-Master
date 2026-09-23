@@ -10,8 +10,8 @@ import (
 type Repository interface {
 	RegisterRepo(ctx context.Context, user models.User) error
 	GetLoginDataRepo(ctx context.Context, email string) (models.LoginResult, error)
-	SetRoleRepo(ctx context.Context,email string, role constants.UserRole) error
-	
+	SetRoleRepo(ctx context.Context, email string, role constants.UserRole) error
+
 	GetOwnTicketsRepo(ctx context.Context, user_id int, pagData dto.PaginationData) ([]models.Ticket, error)
 	GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, error)
 	ClaimNextTicketRepo(ctx context.Context, operatorID int) (*models.Ticket, error)

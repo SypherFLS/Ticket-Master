@@ -21,7 +21,7 @@ func (r *Repo) GetLoginDataRepo(ctx context.Context, email string) (models.Login
 	return data, res
 }
 
-func (r *Repo) SetRoleRepo(ctx context.Context,email string, role constants.UserRole) error { // rework jwt token
+func (r *Repo) SetRoleRepo(ctx context.Context, email string, role constants.UserRole) error { // rework jwt token
 	res := r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("email = ?", email).
@@ -33,4 +33,3 @@ func (r *Repo) SetRoleRepo(ctx context.Context,email string, role constants.User
 
 	return res.Error
 }
-

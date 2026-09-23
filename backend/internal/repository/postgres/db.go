@@ -5,12 +5,12 @@ import (
 	"time"
 	"tmaster/internal/config"
 
-	"gorm.io/gorm"
 	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-func InitDB(cfg config.Config) (*gorm.DB, error){
+func InitDB(cfg config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Database.Host,
@@ -32,12 +32,11 @@ func InitDB(cfg config.Config) (*gorm.DB, error){
 	if err != nil {
 		return nil, err
 	}
-	
+
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(25)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	sqlDB.SetConnMaxIdleTime(10 * time.Minute)
-
 
 	return db, nil
 }

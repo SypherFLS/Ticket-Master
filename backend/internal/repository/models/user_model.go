@@ -3,10 +3,10 @@ package models
 import "tmaster/internal/constants"
 
 type User struct {
-	ID           int   `gorm:"primaryKey"`
+	ID           int    `gorm:"primaryKey"`
 	Name         string `gorm:"not null;unique"`
 	PasswordHash string
-	Email        string   `gorm:"not null;unique"`
+	Email        string             `gorm:"not null;unique"`
 	Role         constants.UserRole `gorm:"not null;default:user"`
 
 	Tickets []Ticket
