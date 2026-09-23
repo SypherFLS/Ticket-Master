@@ -12,13 +12,13 @@ type JWTManager struct {
 }
 
 func NewJWTManager(secret []byte) *JWTManager {
-	return &JWTManager {
+	return &JWTManager{
 		secret: secret,
 	}
 }
 
 type claims struct {
-	UserID int `json:"user_id"`
+	UserID   int    `json:"user_id"`
 	UserRole string `json:"user_role"`
 
 	jwt.RegisteredClaims
@@ -26,7 +26,7 @@ type claims struct {
 
 func (j *JWTManager) Generate(userID int, UserRole string) (string, error) {
 	claims := claims{
-		UserID : userID,
+		UserID:   userID,
 		UserRole: UserRole,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(
@@ -56,13 +56,12 @@ func (j *JWTManager) Validate(tokenString string) (int, string, error) {
 	)
 
 	if err != nil {
-		return 0,"", err
+		return 0, "", err
 	}
 
 	if !token.Valid {
-		return 0,"", apperrors.InvalidToken
+		return 0, "", apperrors.InvalidToken
 	}
 
 	return claims.UserID, claims.UserRole, nil
 }
-

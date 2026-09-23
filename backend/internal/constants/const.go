@@ -13,12 +13,12 @@ type TicketStatus string
 const (
 	StatusNew     TicketStatus = "new"
 	StatusPending TicketStatus = "pending"
-	StatusClosed   TicketStatus = "closed"
+	StatusClosed  TicketStatus = "closed"
 )
 
 type contextKey string
 
 const (
-	UserIDKey contextKey = "userID"
+	UserIDKey   contextKey = "userID"
 	UserRoleKey contextKey = "userRole"
 )
