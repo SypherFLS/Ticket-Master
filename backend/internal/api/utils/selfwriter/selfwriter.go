@@ -6,7 +6,7 @@ import (
 
 type SelfWriter struct {
 	http.ResponseWriter
-	Code int 
+	Code int
 }
 
 func (sw *SelfWriter) WriteHeader(code int) {

@@ -1,9 +1,9 @@
 package helpers
 
 import (
-	"net/http"
 	"encoding/json"
 	"log"
+	"net/http"
 )
 
 type ErrorResponse struct {
@@ -17,7 +17,7 @@ func WriteJSON(w http.ResponseWriter, code int, data any) {
 	)
 
 	w.WriteHeader(code)
-	
+
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("failed encoding with error %v\n", err)
 	}
@@ -25,7 +25,7 @@ func WriteJSON(w http.ResponseWriter, code int, data any) {
 
 func WriteError(w http.ResponseWriter, code int, msg string) {
 	resp := ErrorResponse{
-		Error : msg,
+		Error: msg,
 	}
 	WriteJSON(w, code, resp)
-}	
+}
