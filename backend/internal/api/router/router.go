@@ -23,7 +23,7 @@ func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Conf
 	private.Handle("POST /claime", http.HandlerFunc(h.ClaimNextTicketHandler))
 	private.Handle("PATCH /close", http.HandlerFunc(h.CloseTicketHandler))
 	private.Handle("GET /tickets_queue", http.HandlerFunc(h.GetNewTicketsHandler))
-	
+
 	publicChain := middlewares.CommonChain(
 		public,
 		cfg.Server.Timeout,

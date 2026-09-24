@@ -6,26 +6,26 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig `yaml:"server"`
+	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 }
 
 type ServerConfig struct {
-	Port string `yaml:"port"`
-	Timeout int `yaml:"timeout"`
-	Retries int `yaml:"retries"`
+	Port    string `yaml:"port"`
+	Timeout int    `yaml:"timeout"`
+	Retries int    `yaml:"retries"`
 }
 
 type DatabaseConfig struct {
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
-	User string `yaml:"user"`
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	User     string `yaml:"user"`
 	Password string `yaml:"password"`
-	Name string `yaml:"name"`
-	Sslmode string `yaml:"sslmode"`
+	Name     string `yaml:"name"`
+	Sslmode  string `yaml:"sslmode"`
 }
 
-func InitConfig(path string) (Config, error){
+func InitConfig(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 
 	if err != nil {

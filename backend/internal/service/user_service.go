@@ -39,10 +39,10 @@ func (s *Service) LoginService(ctx context.Context, user dto.LoginDTO) (string, 
 	return token, nil
 }
 
-func (s *Service) SetRoleService(ctx context.Context, ru dto.RequsetUser, email string, role constants.UserRole) error {
-	if !auth.HasPermission(ru.Role, auth.PermissionUserManage) {
+func (s *Service) SetRoleService(ctx context.Context, request_role constants.UserRole, email string, role_to_upd constants.UserRole) error {
+	if !auth.HasPermission(request_role, auth.PermissionUserManage) {
 		return apperrors.NoPermission
 	}
 
-	return s.repo.SetRoleRepo(ctx, email, role)
+	return s.repo.SetRoleRepo(ctx, email, role_to_upd)
 }

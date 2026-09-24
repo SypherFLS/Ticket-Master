@@ -16,7 +16,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	
+
 	token, err := h.service.LoginService(r.Context(), logData)
 
 	if err != nil {
