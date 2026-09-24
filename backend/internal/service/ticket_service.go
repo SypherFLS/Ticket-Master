@@ -25,7 +25,7 @@ func (s *Service) GetOwnTicketsService(ctx context.Context, user_id int, user_Ro
 	raw_data, err := s.repo.GetOwnTicketsRepo(ctx, user_id, pag_data)
 
 	if err != nil {
-		return tickets, err
+		return []dto.UserTicketResponse{}, err
 	}
 
 	tickets = dto.ManyMTUT(raw_data)
@@ -48,26 +48,41 @@ func (s *Service) GetNewTicketsService(ctx context.Context, user_Role constants.
 	return res, nil
 }
 
-func (s *Service) ClaimNextTicketService(ctx context.Context, user_Role constants.UserRole) error {
+func (s *Service) ClaimNextTicketService(ctx context.Context, operator_id int, user_Role constants.UserRole) (dto.OperatorTicketResponse, error) {
+
 	if !auth.HasPermission(user_Role, auth.PermissionTicketAssign) {
-		return apperrors.NoPermission
+		return dto.OperatorTicketResponse{}, apperrors.NoPermission
 	}
 
-	return nil
+	raw_data, err := s.repo.ClaimNextTicketRepo(ctx, operator_id)
+	if err != nil {
+		return dto.OperatorTicketResponse{}, err
+	}
+
+	resp := dto.ModelToOperatorTicket(*raw_data)
+
+	return resp, nil
 }
 
-func (s *Service) CloseTicketService(ctx context.Context, user_Role constants.UserRole) error {
+func (s *Service) CloseTicketService(ctx context.Context, operator_id int, ticket_id int, user_Role constants.UserRole) error {
 	if !auth.HasPermission(user_Role, auth.PermissionTicketUpdate) {
 		return apperrors.NoPermission
 	}
 
-	return nil
+	return s.repo.CloseTicketRepo(ctx, ticket_id, operator_id)
 }
 
-func (s *Service) GetOwnClaimedTicketsService(ctx context.Context, operator_id int, user_Role constants.UserRole) error {
+func (s *Service) GetOwnClaimedTicketsService(ctx context.Context, operator_id int, user_Role constants.UserRole) (dto.OperatorTicketResponse, error) {
 	if !auth.HasPermission(user_Role, auth.PermissionTicketOwnClaimed) {
-		return apperrors.NoPermission
+		return dto.OperatorTicketResponse{}, apperrors.NoPermission
 	}
 
-	return nil
+	raw_data, err := s.repo.GetClaimedTicket(ctx, operator_id)
+
+	if err != nil {
+		return dto.OperatorTicketResponse{}, err
+	}
+
+	resp := dto.ModelToOperatorTicket(raw_data)
+	return resp, nil
 }
