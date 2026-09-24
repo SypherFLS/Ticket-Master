@@ -8,7 +8,7 @@ import (
 	"tmaster/internal/dto"
 )
 
-func (s *Service) RegisterService(ctx context.Context,user dto.RegisterDTO) error{
+func (s *Service) RegisterService(ctx context.Context, user dto.RegisterDTO) error {
 	hashed, err := auth.HashPassword(user.Password)
 	if err != nil {
 		return err
@@ -19,9 +19,9 @@ func (s *Service) RegisterService(ctx context.Context,user dto.RegisterDTO) erro
 	return s.repo.RegisterRepo(ctx, userModel)
 }
 
-func (s *Service) LoginService(ctx context.Context, user dto.LoginDTO) (string, error){
+func (s *Service) LoginService(ctx context.Context, user dto.LoginDTO) (string, error) {
 	result, err := s.repo.GetLoginDataRepo(ctx, user.Email)
-	
+
 	if err != nil {
 		return "", err
 	}
@@ -39,10 +39,10 @@ func (s *Service) LoginService(ctx context.Context, user dto.LoginDTO) (string, 
 	return token, nil
 }
 
-func (s *Service) SetRoleService(ctx context.Context,ru dto.RequsetUser, email string, role constants.UserRole) error{
+func (s *Service) SetRoleService(ctx context.Context, ru dto.RequsetUser, email string, role constants.UserRole) error {
 	if !auth.HasPermission(ru.Role, auth.PermissionUserManage) {
 		return apperrors.NoPermission
 	}
-	
+
 	return s.repo.SetRoleRepo(ctx, email, role)
-}	
+}
