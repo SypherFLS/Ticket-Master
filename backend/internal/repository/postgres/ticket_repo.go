@@ -101,7 +101,7 @@ func (r *Repo) GetClaimedTicket(ctx context.Context, operator_id int) (models.Ti
 	return ticket, nil
 }
 
-func (r *Repo) CloseTicketRepo(ctx context.Context, ticket_id uint, operator_id int) error {
+func (r *Repo) CloseTicketRepo(ctx context.Context, ticket_id int, operator_id int) error {
 	now := time.Now()
 	res := r.db.WithContext(ctx).Model(&models.Ticket{}).Where("id = ? AND operator_id = ?", ticket_id, operator_id).Updates(map[string]any{
 		"status":      constants.StatusClosed,

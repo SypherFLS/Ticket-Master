@@ -15,6 +15,7 @@ type Repository interface {
 	GetOwnTicketsRepo(ctx context.Context, user_id int, pagData dto.PaginationData) ([]models.Ticket, error)
 	GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, error)
 	ClaimNextTicketRepo(ctx context.Context, operatorID int) (*models.Ticket, error)
+	GetClaimedTicket(ctx context.Context, operator_id int) (models.Ticket, error)
 	CreateTicketRepo(ctx context.Context, ticket *models.Ticket) error
-	CloseTicketRepo(ctx context.Context, ticket_id uint, operator_id int) error
+	CloseTicketRepo(ctx context.Context, ticket_id int, operator_id int) error
 }

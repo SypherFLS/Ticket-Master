@@ -65,6 +65,15 @@ func ModelToOperatorTicket(data models.Ticket) OperatorTicketResponse {
 	}
 }
 
+func ManyMTOT(data []models.Ticket) []OperatorTicketResponse {
+	resp := []OperatorTicketResponse{}
+	for _, r := range data {
+		resp = append(resp, ModelToOperatorTicket(r))
+	}
+
+	return resp
+}
+
 // type AdminTicketResponse struct {
 
 // }
