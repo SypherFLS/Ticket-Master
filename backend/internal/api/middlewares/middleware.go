@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 	"tmaster/internal/api/utils/helpers"
-	"tmaster/internal/api/utils/params"
 	"tmaster/internal/api/utils/selfwriter"
 	"tmaster/internal/auth"
+	"tmaster/internal/constants"
 )
 
 type Middleware func(http.Handler) http.Handler
@@ -48,7 +48,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		current_time := time.Now()
 		sw := &selfwriter.SelfWriter{
 			ResponseWriter: w,
-			Code: 200,
+			Code:           200,
 		}
 		log.Printf("handler %v started \n", r.URL.String())
 		next.ServeHTTP(sw, r)
@@ -96,8 +96,8 @@ func AuthMiddleware(jwtManager *auth.JWTManager) Middleware {
 				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
 				return
 			}
-			ctx := context.WithValue(r.Context(), params.UserIDKey, userID)
-			ctx2 := context.WithValue(ctx, params.UserRoleKey, userRole)
+			ctx := context.WithValue(r.Context(), constants.UserIDKey, userID)
+			ctx2 := context.WithValue(ctx, constants.UserRoleKey, userRole)
 			next.ServeHTTP(w, r.WithContext(ctx2))
 		})
 	}
