@@ -16,6 +16,22 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tmaster"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  # migrate:
+  #   build:
+  #     context: .
+  #     dockerfile: ./backend/Dockerfile.migrate
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   command: goose -dir ./migrations postgres "$${DATABASE_URL}" up
+  #   environment:
+  #     DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+
 volumes:
   postgres_data:

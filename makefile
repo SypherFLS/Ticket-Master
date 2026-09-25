@@ -1,4 +1,5 @@
-.PHONY: gpush, testing, bup, bups, lint, down, callv
+DB_URL := $(DATABASE_URL)
+.PHONY: gpush, testing, bup, bups, lint, down, callv, migrate
 
 gpush: # make gpush dir=(directory to push) msg=(message to commit)
 	@test -n "$(msg)" || (echo "Usage: make gpush dir=... msg=\"...\"" && exit 1)
@@ -6,6 +7,9 @@ gpush: # make gpush dir=(directory to push) msg=(message to commit)
 	git add go.mod go.sum $(dir) && \
 	git commit -m "$(msg)" && \
 	git push
+
+migrate:
+	cd backend && goose -dir ./migrations postgres "$(DB_URL)" up
 
 bups: # пересобрать бекенд
 	cd backend && docker build -t tm . && docker-compose up -d --build 'backend'
@@ -21,3 +25,4 @@ callv:
 
 lint:
 	cd backend && golangci-lint run
+

@@ -1,3 +1,5 @@
+-- +goose Up
+
 CREATE TABLE tickets (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -16,3 +18,6 @@ CREATE TABLE tickets (
         REFERENCES users(id)
 );
 
+-- +goose Down
+
+DROP TABLE tickets;

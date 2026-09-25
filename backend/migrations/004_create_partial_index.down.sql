@@ -1,1 +1,0 @@
-DROP INDEX idx_one_pending_ticket_per_operator;

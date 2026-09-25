@@ -1,3 +1,5 @@
+-- +goose Up
+
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -9,3 +11,7 @@ CREATE TABLE users (
     CONSTRAINT users_role_check
         CHECK (role IN ('user', 'operator', 'admin'))
 );
+
+-- +goose Down
+
+DROP TABLE users;
