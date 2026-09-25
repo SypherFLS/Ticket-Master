@@ -1,4 +1,4 @@
-.PHONY: gpush, testing, vet, lint
+.PHONY: gpush, testing, bup, bups, lint, down, callv
 
 gpush: # make gpush dir=(directory to push) msg=(message to commit)
 	@test -n "$(msg)" || (echo "Usage: make gpush dir=... msg=\"...\"" && exit 1)
@@ -7,13 +7,17 @@ gpush: # make gpush dir=(directory to push) msg=(message to commit)
 	git commit -m "$(msg)" && \
 	git push
 
-testing:
-	cd backend/ && \
-	go fmt ./... && \
-	
+bups: # пересобрать бекенд
+	cd backend && docker build -t tm . && docker-compose up -d --build 'backend'
 
-vet:
-	cd backend && go vet ./...
+bup: # собрать весь проект
+	cd backend && docker build -t tm . && docker-compose up -d --build 
+
+down: 
+	docker-compose down -v
+
+callv:
+	cd backend && go-callvis ./cmd/main.go
 
 lint:
 	cd backend && golangci-lint run
