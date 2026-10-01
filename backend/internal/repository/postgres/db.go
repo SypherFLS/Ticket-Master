@@ -20,6 +20,7 @@ func InitDB(cfg config.Config) (*gorm.DB, error) {
 		cfg.Database.Name,
 		cfg.Database.Sslmode,
 	)
+	
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})

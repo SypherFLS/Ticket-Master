@@ -43,6 +43,8 @@ func main() {
 		log.Fatalf("failed init to db with error %v\n", err)
 	}
 
+	log.Println("succesfuly init db")
+
 	secret := os.Getenv("JWT_SECRET")
 	JWTManager := auth.NewJWTManager([]byte(secret))
 

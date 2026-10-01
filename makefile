@@ -18,7 +18,7 @@ bup: # собрать весь проект
 	cd backend && docker build -t tm . && docker-compose up -d --build 
 
 down: 
-	docker-compose down -v
+	cd backend && docker-compose down -v
 
 callv:
 	cd backend && go-callvis ./cmd/main.go
