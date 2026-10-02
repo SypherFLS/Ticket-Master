@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"log"
+	"uuid"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -26,10 +27,25 @@ func Chain(h http.Handler, m ...Middleware) http.Handler {
 func CommonChain(h http.Handler, timeout int) http.Handler {
 	return Chain(
 		h,
+		TraceMiddleware,
 		LoggingMiddleware,
 		RecoverMiddleware,
 		TimeoutMiddleware(timeout),
 	)
+}
+
+func TraceMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := uuid.New().String()
+
+		ctx := context.WithValue(
+            r.Context(),
+            constants.RequestIDKey,
+            requestID,
+        )
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func TimeoutMiddleware(timeout int) Middleware {
@@ -102,3 +118,4 @@ func AuthMiddleware(jwtManager *auth.JWTManager) Middleware {
 		})
 	}
 }
+
