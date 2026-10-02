@@ -1,352 +1,116 @@
 # Ticket-Master
 
-Проект представляет собой backend-сервис для управления тикетами в формате мини-CRM/системы поддержки. Основная идея — разделить пользователей на роли и дать каждой роли только тот функционал, который ей нужен: пользователь создаёт тикеты, оператор обрабатывает очередь, администратор управляет ролями и имеет доступ к более широким операциям.
+Ticket-Master — backend-сервис для регистрации пользователей и обработки тикетов. Пользователь создаёт обращение, оператор берёт его из очереди. Сервис написан на Go; HTTP API работает на `net/http`, данные хранятся в PostgreSQL.
 
-## Основная логика
+## Поток запроса
 
-Система строится вокруг трёх ключевых сущностей:
-- User — пользователь системы
-- Ticket — тикет, который создаётся пользователем и затем обрабатывается оператором
-- Role — роль пользователя: user, operator, admin
+Запрос проходит через HTTP-router и middleware к handler, затем в service и repository. Handler разбирает HTTP-запрос и DTO; сервис проверяет разрешения и выполняет прикладную логику; репозиторий работает с PostgreSQL через GORM. Сборка зависимостей находится в `backend/cmd/main.go`.
 
-Тикет проходит жизненный цикл:
-- new — новый тикет, ожидает обработки
-- pending — тикет взят в работу оператором
-- closed — тикет закрыт и помечен как решённый
+- `internal/api` — маршруты, handlers, middleware, разбор параметров и HTTP-ответы;
+- `internal/service` — сценарии регистрации, входа и работы с тикетами;
+- `internal/repository` — интерфейс хранилища и его реализация на PostgreSQL;
+- `internal/repository/models` и `internal/dto` — модели БД и структуры HTTP-запросов/ответов;
+- `internal/auth` — bcrypt-хэширование паролей, JWT и таблица разрешений ролей;
+- `internal/config` — чтение YAML-конфигурации;
+- `migrations` — SQL-миграции Goose.
 
-## Разделение ролей
+Общие middleware логируют запросы, задают таймаут и восстанавливают обработчик после panic. Для защищённых маршрутов JWT middleware проверяет bearer-токен и кладёт ID и роль пользователя в контекст. Токен подписывается HS256 и действует 24 часа.
 
-- User:
-  - может регистрироваться и входить в систему
-  - может создавать тикеты
-  - может смотреть только свои тикеты
+Разрешения описаны в `internal/auth/permissions.go` и проверяются сервисным слоем. Роль `user` создаёт и читает собственные тикеты; `operator` читает очередь и забирает тикеты; в permission map также заданы права `admin`. Два административных HTTP-маршрута пока намеренно отложены до расширения схемы БД и переработки JWT. Они не входят в текущий API.
 
-- Operator:
-  - может смотреть очередь новых тикетов
-  - может взять следующий тикет в работу
-  - может закрывать тикет после решения
-  - может видеть свои назначенные тикеты
-
-- Admin:
-  - имеет расширенный доступ к тикетам
-  - может управлять ролями пользователей
-  - может выполнять действия, связанные с общей помощью и администрированием
-
-Вся логика прав реализована через permission map. Это позволяет не завязываться на жёстком условии `if role == "admin"`, а хранить права как набор допустимых операций. Для каждого пользователя роли сопоставляется набор разрешений, а сервисный слой проверяет наличие нужного permission перед выполнением операции.
-
-Пример структуры прав:
-
-```go
-var RolePermission = map[constants.UserRole]map[Permission]struct{}{
-    constants.RoleUser: {
-        PermissionTicketCreate:  {},
-        PermissionTicketReadOwn: {},
-    },
-    constants.RoleOperator: {
-        PermissionTicketOwnClaimed: {},
-        PermissionTicketAssign:     {},
-        PermissionTicketReadQueue:  {},
-        PermissionTicketUpdate:     {},
-    },
-    constants.RoleAdmin: {
-        PermissionTicketReadAll:   {},
-        PermissionTicketReadQueue: {},
-        PermissionUserManage:      {},
-    },
-}
-```
-
-Это типичный pattern "role-based access control" с упрощённым permission map, где доступ определяется по роли и набору разрешений.
-
-## Архитектура проекта
-
-Проект выполнен в монолитной архитектуре, но логически разделён на слои. Главная идея — не смешивать API-логику, бизнес-логику и доступ к данным.
-
-### 1. API слой
-
-API слой реализован на `net/http` без фреймворка. Есть маршрутизатор, middleware и handlers.
-
-Основной вход в приложение:
-
-```go
-router := router.NewRouter(handler, JWTManager, cfg)
-http.ListenAndServe(cfg.Server.Port, router)
-```
-
-В `router.go` создаются два маршрута:
-- public — регистрация и логин
-- private — все защищённые endpoint'ы, требующие JWT
-
-```go
-public.Handle("POST /register", http.HandlerFunc(h.RegisterHandler))
-public.Handle("POST /login", http.HandlerFunc(h.LoginHandler))
-
-private.Handle("POST /create", http.HandlerFunc(h.CreateTicketHandler))
-private.Handle("GET /tickets", http.HandlerFunc(h.GetOwnTicketsHandler))
-private.Handle("POST /claime", http.HandlerFunc(h.ClaimNextTicketHandler))
-private.Handle("PATCH /close", http.HandlerFunc(h.CloseTicketHandler))
-private.Handle("GET /tickets_queue", http.HandlerFunc(h.GetNewTicketsHandler))
-```
-
-### 2. Middleware слой
-
-В проекте используется цепочка middleware, которая добавляет общий функционал для всех запросов:
-- логирование
-- восстановление после падения
-- таймаут на запрос
-- авторизация JWT
-
-Это хороший пример паттерна "chain of responsibility". Каждый middleware оборачивает `http.Handler` и добавляет отдельную обязанность.
-
-```go
-privateChain := middlewares.CommonChain(
-    middlewares.AuthMiddleware(jwtManager)(private),
-    cfg.Server.Timeout,
-)
-```
-
-`AuthMiddleware` принимает `Authorization: Bearer <token>`, валидирует JWT и кладёт `user_id` и `user_role` в контекст запроса. После этого последующие обработчики работают уже с авторизованным пользователем.
-
-### 3. Сервисный слой
-
-Сервисный слой отвечает за бизнес-логику. Он проверяет права пользователя, маппит DTO в модели и вызывает репозиторий.
-
-Пример:
-
-```go
-func (s *Service) CreateTicketService(ctx context.Context, ticketDTO dto.TicketDTO, user_id int, user_Role constants.UserRole) (int, error) {
-    if !auth.HasPermission(user_Role, auth.PermissionTicketCreate) {
-        return 0, apperrors.NoPermission
-    }
-
-    ticket := dto.TicketToModel(ticketDTO, user_id)
-    return ticket.ID, s.repo.CreateTicketRepo(ctx, &ticket)
-}
-```
-
-Таким образом выделяется слой бизнес-правил: handler не должен сам решать, можно ли пользователю создавать тикет, а репозиторий не должен проверять роль пользователя.
-
-### 4. Репозиторий
-
-Репозиторий инкапсулирует работу с БД. На него уходит общий интерфейс:
-
-```go
-type Repository interface {
-    RegisterRepo(ctx context.Context, user models.User) error
-    GetLoginDataRepo(ctx context.Context, email string) (models.LoginResult, error)
-    SetRoleRepo(ctx context.Context, email string, role constants.UserRole) error
-
-    GetOwnTicketsRepo(ctx context.Context, user_id int, pagData dto.PaginationData) ([]models.Ticket, error)
-    GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, error)
-    ClaimNextTicketRepo(ctx context.Context, operatorID int) (*models.Ticket, error)
-    GetClaimedTicket(ctx context.Context, operator_id int) (models.Ticket, error)
-    CreateTicketRepo(ctx context.Context, ticket *models.Ticket) error
-    CloseTicketRepo(ctx context.Context, ticket_id int, operator_id int) error
-}
-```
-
-Это пример паттерна Repository, который позволяет скрыть детали СУБД и подключить любую реализацию без изменения сервисного слоя.
-
-## Механика работы запросов
-
-### Регистрация и логин
-
-При регистрации пользователь создаётся через `RegisterRepo`, а пароль хэшируется до записи в базу. После логина система генерирует JWT с `user_id` и `user_role`.
-
-```go
-func (j *JWTManager) Generate(userID int, UserRole string) (string, error) {
-    claims := claims{
-        UserID:   userID,
-        UserRole: UserRole,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-        },
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(j.secret)
-}
-```
-
-JWT использует HS256 и валидируется на каждом защищённом запросе через `AuthMiddleware`.
-
-### Создание тикета
-
-Пользователь отправляет запрос на `/api/create`. В обработчике берётся `user_id` из контекста, сервис проверяет permission `ticket:create`, затем конвертирует DTO в модель тикета и сохраняет в БД.
-
-Логика очень простая и соответствует схеме:
-- handler -> service -> repository -> database
-
-### Просмотр своих тикетов
-
-Пользователь может вызвать `GET /api/tickets`. Сервис сначала проверяет `PermissionTicketReadOwn`, затем запрашивает тикеты через `GetOwnTicketsRepo` с фильтрацией по `user_id` и пагинацией.
-
-### Очередь тикетов для оператора
-
-У оператора есть отдельный способ получения тикетов из очереди: `GetNewTickets`. Это запрос к базе по статусу `new`, отсортированный по времени создания.
-
-### Взятие тикета в работу
-
-Самое важное место в проекте — логика назначения тикета оператору.
-
-```go
-err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-    result := tx.Where("status = ?", constants.StatusNew).
-        Order("created_at ASC, id ASC").
-        Clauses(clause.Locking{
-            Strength: "UPDATE",
-            Options:  "SKIP LOCKED",
-        }).
-        First(&ticket)
-```
-
-Здесь реализован паттерн конкурентного назначения тикетов:
-- открывается транзакция
-- выбирается первый свободный `new` тикет
-- строка блокируется `FOR UPDATE SKIP LOCKED`
-- тикет переводится в `pending`
-- оператор записывается в поле `operator_id`
-- фиксируется `claimed_at`
-
-Это защищает систему от race condition, когда несколько операторов захотят взять один и тот же тикет одновременно.
-
-### Закрытие тикета
-
-Когда оператор решает вопрос, вызывается `CloseTicketService`. Проверяется permission `ticket:update`, затем в репозитории выполняется UPDATE по `id` и `operator_id`.
-
-```go
-res := r.db.WithContext(ctx).Model(&models.Ticket{}).Where("id = ? AND operator_id = ?", ticket_id, operator_id).Updates(map[string]any{
-    "status":      constants.StatusClosed,
-    "resolved_at": now,
-})
-```
-
-То есть закрывать тикет может только тот оператор, который его взял в работу.
-
-## Модели данных
-
-### User
-
-```go
-type User struct {
-    ID           int    `gorm:"primaryKey"`
-    Name         string `gorm:"not null;unique"`
-    PasswordHash string
-    Email        string             `gorm:"not null;unique"`
-    Role         constants.UserRole `gorm:"not null;default:user"`
-    Tickets      []Ticket
-}
-```
-
-### Ticket
-
-```go
-type Ticket struct {
-    ID          int    `gorm:"primaryKey"`
-    Title       string `gorm:"not null"`
-    OperatorID  *int
-    Description string
-    Status      constants.TicketStatus `gorm:"not null,default:new"`
-    CreatedAt   time.Time
-    ClaimedAt   *time.Time
-    ResolvedAt  *time.Time
-    UserID      int  `gorm:"not null;index"`
-    User        User `gorm:"foreignKey:UserID"`
-}
-```
-
-Связь между пользователем и тикетом — один ко многим: один пользователь может иметь много тикетов, а тикет всегда привязан к создателю.
-
-## База данных и миграции
-
-В качестве СУБД используется PostgreSQL. Подключение и настройка конфигурируются через `config.yaml` и `.env`/переменные окружения.
-
-Используется GORM для работы с БД, а миграции лежат в папке `backend/migrations`:
-- `001_create_users.up.sql`
-- `002_create_tickets.up.sql`
-- `003_create_partial_index.up.sql`
-- `004_create_partial_index.up.sql`
-
-Это даёт возможность постепенно эволюционировать схему БД и поддерживать код и структуру данных в согласованном состоянии.
+При назначении тикета репозиторий открывает транзакцию, выбирает самый ранний `new` тикет по `created_at, id` с `FOR UPDATE SKIP LOCKED` и переводит его в `pending`. Оператор и время назначения записываются в `operator_id` и `claimed_at`.
 
 ## Конфигурация и запуск
 
-Проект умеет поднимать разные окружения через переменные `ENV`:
-- `local`
-- `dev`
+Приложение читает YAML из `backend/config/config.yaml`. В нём находятся адрес и порт HTTP-сервера, таймаут запроса и параметры подключения к PostgreSQL. Пароль базы берётся из `DB_PASSWORD`. Переменная `ENV` выбирает переменную с путём к конфигу: `CONFIG_PATH_BACKEND` для `local` или `CONFIG_PATH_DOCKER` для `dev`.
 
-В `main.go` выбирается нужный конфиг и инициализируется БД:
+Для Compose используется единственный env-файл `backend/.env`. Если он ещё не создан, скопируйте шаблон и заполните значения:
 
-```go
-config_env := ""
-switch os.Getenv("ENV") {
-case "local":
-    config_env = "CONFIG_PATH_BACKEND"
-case "dev":
-    config_env = "CONFIG_PATH_DOCKER"
-default:
-    log.Fatal("wrong work env")
-}
+```sh
+cp backend/.env.example backend/.env
 ```
 
-После инициализации создаются:
-- DB connection
-- JWT manager
-- repository
-- service
-- handlers
-- router
+Для текущего `backend/config/config.yaml` значения подключения должны соответствовать пользователю `postgres` и базе `tmaster`. Для опубликованного порта PostgreSQL укажите, например, `DB_PORT=5432:5432`.
 
-## Паттерны и подходы, которые используются в проекте
+Compose берёт `${DB_USER}`, `${DB_PASSWORD}`, `${DB_NAME}` и `${DB_PORT}` для конфигурации PostgreSQL. Backend-контейнер также получает переменные из `backend/.env`. Поэтому передайте этот файл Compose явно:
 
-1. Repository pattern
-   - всё взаимодействие с БД спрятано в `repository`
-   - сервисы ничего не знают про SQL или GORM
-
-2. Dependency injection
-   - `repo` и `JWTManager` создаются в `main.go` и передаются по слоям
-
-3. Middleware chain
-   - логирование, таймаут, авторизация и восстановление ошибок объединены в цепочку
-
-4. Role-based access control
-   - права хранятся в `RolePermission`
-   - проверка идёт в сервисе до бизнес-операции
-
-5. Transaction + locking
-   - для конкурирующего назначения тикетов используется транзакция и блокировка строки `SKIP LOCKED`
-
-6. Context-based request flow
-   - `context.Context` используется для передачи информации о пользователе и таймаутов запроса
-
-7. Monolith with clear boundaries
-   - есть логическое разделение на API, middleware, auth, repository, service, models, constants
-
-## Краткое резюме
-
-Ticket-Master — это небольшой, но уже довольно логично построенный монолитный сервис для поддержки тикетов. Он сочетает в себе:
-- `net/http` API без тяжёлого фреймворка
-- JWT авторизацию
-- роль-ориентированную систему прав
-- PostgreSQL + GORM
-- миграции и конфиг
-- middleware-цепочку для защиты и логирования
-- конкурентную обработку очереди тикетов через транзакции и lock
-
-Если смотреть на проект как на учебный/прототип, то он показывает хороший набор практик для backend-сервиса: чистые слои, авторизация, бизнес-логика, репозиторий, ограничения прав и обработка конкурентных сценариев.
-
-```go
-type Repository interface {
-    RegisterRepo(ctx context.Context, user models.User) error
-    GetLoginDataRepo(ctx context.Context, email string) (models.LoginResult, error)
-    SetRoleRepo(ctx context.Context, email string, role constants.UserRole) error
-
-    GetOwnTicketsRepo(ctx context.Context, user_id int, pagData dto.PaginationData) ([]models.Ticket, error)
-    GetNewTickets(ctx context.Context, limit int) ([]models.Ticket, error)
-    ClaimNextTicketRepo(ctx context.Context, operatorID int) (*models.Ticket, error)
-    CreateTicketRepo(ctx context.Context, ticket *models.Ticket) error
-    CloseTicketRepo(ctx context.Context, ticket_id uint, operator_id int) error
-}
+```sh
+docker compose --env-file backend/.env up --build
 ```
 
-Это базовая схема, вокруг которой и строится вся система: пользователь создаёт тикет, оператор его забирает, администратор управляет ролями, а поведение ограничено через permissions и JWT.
+Сервисы: `backend`, `postgres` и `migrate`. Мигратор ждёт healthcheck PostgreSQL и применяет Goose-миграции. Backend слушает порт `8080`. Остановить контейнеры без удаления данных можно так:
+
+```sh
+docker compose --env-file backend/.env down
+```
+
+В Makefile цель `down` выполняет `docker-compose down -v`, то есть вместе с контейнерами удаляет volume базы данных.
+
+## Make-команды
+
+Команды запускаются из корня проекта командой `make <цель>`.
+
+| Команда | Действие |
+| --- | --- |
+| `make bup` | Собирает backend-образ и поднимает Compose-сервисы |
+| `make bups` | Пересобирает и запускает сервис `backend` |
+| `make down` | Останавливает Compose-сервисы и удаляет volumes PostgreSQL |
+| `make migrate` | Применяет миграции локальным Goose по `DATABASE_URL` |
+| `make lint` | Запускает `golangci-lint run` в `backend` |
+| `make callv` | Строит граф вызовов через `go-callvis` |
+| `make gpush dir=... msg="..."` | Добавляет указанный каталог и Go-файлы, создаёт commit и отправляет его в Git |
+
+`make migrate` требует установленного Goose и заданного `DATABASE_URL`. Compose выполняет миграции отдельным сервисом автоматически. Цели `bup` и `bups` используют `docker-compose` без `--env-file backend/.env`; при запуске через Make переменные для `${...}` должны быть экспортированы в shell. Makefile также переходит в `backend`, хотя Compose-файл лежит в корне. Цель `testing` объявлена в `.PHONY`, но в Makefile не реализована.
+
+## HTTP API
+
+Для маршрутов `/api/` нужен заголовок `Authorization: Bearer <token>`.
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| `POST` | `/auth/register` | Регистрация пользователя |
+| `POST` | `/auth/login` | Вход, возвращает JWT как JSON-строку |
+| `POST` | `/api/create` | Создание тикета пользователем |
+| `GET` | `/api/tickets` | Список тикетов текущего пользователя |
+| `GET` | `/api/tickets_queue` | Очередь новых тикетов для оператора и администратора |
+| `POST` | `/api/claime` | Взять следующий тикет оператору |
+| `PATCH` | `/api/close` | Закрытие тикета оператором; обработчик пока передаёт ID `0`, поэтому запрос не закрывает тикет |
+
+Для регистрации передаются `name`, `email`, `password`; для входа — `email` и `password`. Создание тикета принимает `title` и `decription`: именно такое имя JSON-поля задано в текущем DTO. Длина заголовка — от 5 до 30 символов, описания — до 150.
+
+`GET /api/tickets` и `/api/tickets_queue` принимают `limit` и `offset`. По умолчанию используются `limit=10` и `offset=0`.
+
+## Схема PostgreSQL
+
+Схема создаётся Goose-миграциями из `backend/migrations`. GORM используется для запросов; автоматического создания или обновления схемы через GORM нет.
+
+**`users`**
+
+- `id` — `BIGSERIAL PRIMARY KEY`;
+- `name` и `email` — обязательные уникальные поля;
+- `password_hash` — обязательный bcrypt-хэш;
+- `email` проверяется SQL-ограничением формата;
+- `role` по умолчанию `user`, допустимы `user`, `operator`, `admin`.
+
+**`tickets`**
+
+- `id` — `BIGSERIAL PRIMARY KEY`;
+- `title` обязателен, `description` может быть пустым;
+- `user_id` обязателен и ссылается на создавшего пользователя;
+- `operator_id` может быть `NULL`, иначе ссылается на пользователя-оператора;
+- `status` по умолчанию `new`, допустимы `new`, `pending`, `closed`;
+- `created_at` устанавливается через `NOW()`, `claimed_at` и `resolved_at` хранят время смены статуса.
+
+Ограничения на роль и статус закреплены в БД через `CHECK`, связи — через внешние ключи. Миграции `003` и `004` создают частичные индексы:
+
+- `idx_tickets_new_queue` по `(created_at, id)` только для строк со статусом `new`. Он соответствует выборке и порядку получения тикетов из очереди;
+- уникальный `idx_one_pending_ticket_per_operator` по `operator_id` для тикетов `pending` с ненулевым оператором. Он ограничивает каждого оператора одним активным тикетом.
+
+Миграции выполняются сервисом `migrate` при запуске Compose после healthcheck PostgreSQL. Сам backend в Compose не зависит от завершения `migrate`, поэтому порядок готовности backend и мигратора явно не зафиксирован.
+
+## Что отложено
+
+Два административных маршрута планируется добавить после расширения схемы БД и переработки JWT. Текущий permission map уже содержит часть административных разрешений, но эти будущие сценарии пока не представлены в HTTP API.
+
+Маршрут закрытия уже зарегистрирован, но сейчас не получает ID тикета. Это отдельное ограничение текущей реализации, не связанное с отложенными admin-маршрутами.
 
