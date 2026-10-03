@@ -3,6 +3,11 @@ services:
     build: ./backend/
     env_file:
       - backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
   postgres:
