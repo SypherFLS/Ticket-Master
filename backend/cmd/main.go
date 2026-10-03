@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"tmaster/internal/api/handlers"
 	"tmaster/internal/api/router"
 	"tmaster/internal/auth"
 	"tmaster/internal/config"
+	"tmaster/internal/logger"
 	"tmaster/internal/repository/postgres"
 	"tmaster/internal/service"
 
@@ -15,9 +15,15 @@ import (
 )
 
 func main() {
+	appLogger := logger.New()
+
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("godotenv error:", err)
+		appLogger.Error(
+			"godotenv error:", 
+			"error", 
+			err,
+		)
 	}
 
 	config_env := ""
@@ -27,30 +33,48 @@ func main() {
 	case "dev":
 		config_env = "CONFIG_PATH_DOCKER"
 	default:
-		log.Fatal("wrong work env")
+		appLogger.Error(
+			"wrong work env", 
+			"error", 
+			"wrong config_env",
+		)
 	}
 
 	path := os.Getenv(config_env)
 	cfg, err := config.InitConfig(path)
 
 	if err != nil {
-		log.Fatalf("failed init config with error %v\n", err)
+		appLogger.Error(
+			"failed init config with error", 
+			"error",
+			err,
+		)
+		os.Exit(1)
 	}
 
 	db, err := postgres.InitDB(cfg)
 
 	if err != nil {
-		log.Fatalf("failed init to db with error %v\n", err)
+		appLogger.Error(
+			"failed init to db with error", 
+			"error", 
+			err,
+		)
+		os.Exit(1)
 	}
 
-	log.Println("succesfuly init db")
+	appLogger.Info(
+		"server start",
+		"port",
+		cfg.Server.Port,
+	)
 
 	secret := os.Getenv("JWT_SECRET")
 	JWTManager := auth.NewJWTManager([]byte(secret))
 
 	repo := postgres.NewRepo(db)
 	service := service.NewService(repo, JWTManager)
-	handler := handlers.NewHandler(service)
+	handler := handlers.NewHandler(service, appLogger)
 	router := router.NewRouter(handler, JWTManager, cfg)
 
 	http.ListenAndServe(cfg.Server.Port, router)
