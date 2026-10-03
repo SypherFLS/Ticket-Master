@@ -7,12 +7,18 @@ import (
 	"tmaster/internal/api/utils/helpers"
 	"tmaster/internal/api/utils/params"
 	"tmaster/internal/dto"
+	"tmaster/internal/validation"
 )
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var logData dto.LoginDTO
 
 	if err := json.NewDecoder(r.Body).Decode(&logData); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := validation.Validate(logData); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -35,6 +41,11 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		helpers.WriteError(w, maperrors.StatusFromErr(err), err.Error())
+		return
+	}
+
+	if err := validation.Validate(user); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
