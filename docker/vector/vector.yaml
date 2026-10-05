@@ -1,0 +1,64 @@
+sources:
+  docker:
+    type: docker_logs
+    include_labels:
+      - logs=tmaster
+
+transforms:
+  parse_app_logs:
+    type: remap
+    inputs:
+      - docker
+
+    source: |
+      parsed, err = parse_json(.message)
+
+      if err == null {
+        .timestamp = parsed.time
+        .level = parsed.level
+        .message = parsed.msg
+        .service = "tmaster"
+
+        if exists(parsed.request_id) {
+          .request_id = parsed.request_id
+        } else {
+          .request_id = ""
+        }
+
+        .attributes = {}
+
+        for_each(array!(parsed)) -> |key, value| {
+          if key != "time" &&
+             key != "level" &&
+             key != "msg" &&
+             key != "request_id" {
+            .attributes = set!(.attributes, [key], value)
+          }
+        }
+      }
+
+sinks:
+  clickhouse:
+    type: clickhouse
+
+    inputs:
+      - parse_app_logs
+
+    endpoint: http://clickhouse:8123
+    database: logs
+    table: app_logs
+
+    format: json_each_row
+
+    date_time_best_effort: true
+
+    compression: gzip
+
+    batch:
+      max_events: 100
+      timeout_secs: 2
+
+    buffer:
+      type: disk
+      max_size: 536870912
+      when_full: block
