@@ -1,6 +1,7 @@
 package router
 
 import (
+	"log/slog"
 	"net/http"
 	"tmaster/internal/api/handlers"
 	"tmaster/internal/api/middlewares"
@@ -9,7 +10,7 @@ import (
 	"tmaster/internal/config"
 )
 
-func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Config) http.Handler {
+func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Config, logger *slog.Logger) http.Handler {
 	root := http.NewServeMux()
 
 	public := http.NewServeMux()
@@ -27,12 +28,14 @@ func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Conf
 	publicChain := middlewares.CommonChain(
 		public,
 		cfg.Server.Timeout,
+		logger,
 	)
 	privateChain := middlewares.CommonChain(
 		middlewares.AuthMiddleware(jwtManager)(
 			private,
 		),
 		cfg.Server.Timeout,
+		logger,
 	)
 
 	root.Handle("/api/", http.StripPrefix("/api", privateChain))

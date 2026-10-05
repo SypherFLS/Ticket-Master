@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"tmaster/internal/api/maperrors"
 	"tmaster/internal/api/utils/helpers"
-	"tmaster/internal/api/utils/params"
+	"tmaster/internal/constants/params"
+
 	"tmaster/internal/dto"
 	"tmaster/internal/validation"
 )

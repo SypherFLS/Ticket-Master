@@ -21,33 +21,34 @@ func main() {
 	if err != nil {
 		appLogger.Error(
 			"godotenv error:", 
-			"error", 
-			err,
+			"error", err,
 		)
+		os.Exit(1)
 	}
 
-	config_env := ""
-	switch os.Getenv("ENV") {
+	configEnv := ""
+	env := os.Getenv("ENV")
+	switch env {
 	case "local":
-		config_env = "CONFIG_PATH_BACKEND"
+		configEnv = "CONFIG_PATH_BACKEND"
 	case "dev":
-		config_env = "CONFIG_PATH_DOCKER"
+		configEnv = "CONFIG_PATH_DOCKER"
 	default:
 		appLogger.Error(
 			"wrong work env", 
-			"error", 
-			"wrong config_env",
+			"error", "wrong config_env",
+			"env", env,
 		)
 	}
 
-	path := os.Getenv(config_env)
+	path := os.Getenv(configEnv)
 	cfg, err := config.InitConfig(path)
 
 	if err != nil {
 		appLogger.Error(
 			"failed init config with error", 
-			"error",
-			err,
+			"error", err,
+			"config path", path,
 		)
 		os.Exit(1)
 	}
@@ -57,25 +58,29 @@ func main() {
 	if err != nil {
 		appLogger.Error(
 			"failed init to db with error", 
-			"error", 
-			err,
+			"error", err,
 		)
 		os.Exit(1)
 	}
 
 	appLogger.Info(
-		"server start",
-		"port",
-		cfg.Server.Port,
+		"db init and connected",
+		"port", cfg.Server.Port,
 	)
 
 	secret := os.Getenv("JWT_SECRET")
-	JWTManager := auth.NewJWTManager([]byte(secret))
+	jwtManager := auth.NewJWTManager([]byte(secret))
 
 	repo := postgres.NewRepo(db)
-	service := service.NewService(repo, JWTManager)
+	service := service.NewService(repo, jwtManager)
 	handler := handlers.NewHandler(service, appLogger)
-	router := router.NewRouter(handler, JWTManager, cfg)
+	router := router.NewRouter(handler, jwtManager, cfg, appLogger)
 
-	http.ListenAndServe(cfg.Server.Port, router)
+	if err := http.ListenAndServe(cfg.Server.Port, router); err != nil {
+		appLogger.Error(
+			"failed start service",
+			"error", err,
+		)
+		os.Exit(1)
+	}
 }

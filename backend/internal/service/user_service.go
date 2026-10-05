@@ -5,6 +5,7 @@ import (
 	"tmaster/internal/apperrors"
 	"tmaster/internal/auth"
 	"tmaster/internal/constants"
+	"tmaster/internal/constants/params"
 	"tmaster/internal/dto"
 )
 
@@ -16,7 +17,18 @@ func (s *Service) RegisterService(ctx context.Context, user dto.RegisterDTO) err
 
 	userModel := dto.RegToModel(user, hashed)
 
-	return s.repo.RegisterRepo(ctx, userModel)
+	if err := s.repo.RegisterRepo(ctx, userModel); err != nil {
+		return err
+	}
+
+	logger := params.GetLogger(ctx)
+	logger.Info(
+		"user registered",
+		"user_name", user.Name,
+		"user_email", user.Email,
+	)
+
+	return nil
 }
 
 func (s *Service) LoginService(ctx context.Context, user dto.LoginDTO) (string, error) {
@@ -44,5 +56,18 @@ func (s *Service) SetRoleService(ctx context.Context, request_role constants.Use
 		return apperrors.NoPermission
 	}
 
-	return s.repo.SetRoleRepo(ctx, email, role_to_upd)
+	err := s.repo.SetRoleRepo(ctx, email, role_to_upd)
+	if err != nil {
+		return err
+	}
+
+	logger := params.GetLogger(ctx)
+
+	logger.Info(
+		"user role changed",
+		"user_email", email,
+		"new_role", role_to_upd,
+	)
+
+	return nil
 }

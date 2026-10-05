@@ -10,6 +10,7 @@ func New( ) *slog.Logger{
 		os.Stdout, 
 		&slog.HandlerOptions{
         	Level: slog.LevelInfo,
+			AddSource: true,
     	},
 	)
 

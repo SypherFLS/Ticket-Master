@@ -5,6 +5,7 @@ import (
 	"tmaster/internal/apperrors"
 	"tmaster/internal/auth"
 	"tmaster/internal/constants"
+	"tmaster/internal/constants/params"
 	"tmaster/internal/dto"
 )
 
@@ -13,7 +14,16 @@ func (s *Service) CreateTicketService(ctx context.Context, ticketDTO dto.TicketD
 		return 0, apperrors.NoPermission
 	}
 	ticket := dto.TicketToModel(ticketDTO, user_id)
-	return ticket.ID, s.repo.CreateTicketRepo(ctx, &ticket)
+	if err := s.repo.CreateTicketRepo(ctx, &ticket); err != nil {
+		return -1, err
+	}
+	logger := params.GetLogger(ctx)
+	logger.Info(
+		"ticket created",
+		"user_id", user_id,
+		"ticket_id", ticket.ID,
+	)
+	return ticket.ID, nil
 }
 
 func (s *Service) GetOwnTicketsService(ctx context.Context, user_id int, user_Role constants.UserRole, pag_data dto.PaginationData) ([]dto.UserTicketResponse, error) {
@@ -59,6 +69,17 @@ func (s *Service) ClaimNextTicketService(ctx context.Context, operator_id int, u
 		return dto.OperatorTicketResponse{}, err
 	}
 
+	logger := params.GetLogger(ctx)
+	duration := raw_data.ClaimedAt.Sub(raw_data.CreatedAt)
+	logger.Info(
+		"ticket claimed",
+		"operator_id", operator_id,
+		"ticket_id", raw_data.ID,
+		"created_at", raw_data.CreatedAt,
+		"claimed_at", raw_data.ClaimedAt,
+		"awaiting_time", duration,
+	)
+
 	resp := dto.ModelToOperatorTicket(*raw_data)
 
 	return resp, nil
@@ -69,7 +90,18 @@ func (s *Service) CloseTicketService(ctx context.Context, operator_id int, ticke
 		return apperrors.NoPermission
 	}
 
-	return s.repo.CloseTicketRepo(ctx, ticket_id, operator_id)
+	if err := s.repo.CloseTicketRepo(ctx, ticket_id, operator_id); err != nil {
+		return err
+	}
+
+	logger := params.GetLogger(ctx)
+	logger.Info(
+		"ticket closed",
+		"operator_id", operator_id,
+		"ticket_id", ticket_id,
+	)
+
+	return nil
 }
 
 func (s *Service) GetOwnClaimedTicketsService(ctx context.Context, operator_id int, user_Role constants.UserRole) (dto.OperatorTicketResponse, error) {
