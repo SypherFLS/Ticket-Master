@@ -1,12 +1,12 @@
 # Ticket-Master
 
-Ticket-Master — backend-сервис для регистрации пользователей и обработки тикетов. Пользователь создаёт обращение, оператор берёт его из очереди. Сервис написан на Go; HTTP API работает на `net/http`, данные хранятся в PostgreSQL.
+Ticket-Master — backend-сервис для регистрации пользователей и обработки тикетов. Пользователь создаёт обращение, оператор берёт его из очереди. Сервис написан на Go; HTTP API строится на Gin, данные хранятся в PostgreSQL.
 
 ## Поток запроса
 
-Запрос проходит через HTTP-router и middleware к handler, затем в service и repository. Handler разбирает HTTP-запрос и DTO; сервис проверяет разрешения и выполняет прикладную логику; репозиторий работает с PostgreSQL через GORM. Сборка зависимостей находится в `backend/cmd/main.go`.
+Запрос проходит через Gin-router и middleware к handler, затем в service и repository. Gin создаёт маршруты из `internal/api/router/router.go`, в middleware добавляются trace/logging/recovery/timeout и JWT-проверка для защищённых маршрутов. Handler разбирает HTTP-запрос и DTO; сервис проверяет разрешения и выполняет прикладную логику; репозиторий работает с PostgreSQL через GORM. Сборка зависимостей находится в `backend/cmd/main.go`.
 
-- `internal/api` — маршруты, handlers, middleware, разбор параметров и HTTP-ответы;
+- `internal/api` — gin-роутер, handlers, middleware, разбор параметров и HTTP-ответы;
 - `internal/service` — сценарии регистрации, входа и работы с тикетами;
 - `internal/repository` — интерфейс хранилища и его реализация на PostgreSQL;
 - `internal/repository/models` и `internal/dto` — модели БД и структуры HTTP-запросов/ответов;
@@ -75,8 +75,8 @@ docker compose --env-file backend/.env down
 | `POST` | `/api/create` | Создание тикета пользователем |
 | `GET` | `/api/tickets` | Список тикетов текущего пользователя |
 | `GET` | `/api/tickets_queue` | Очередь новых тикетов для оператора и администратора |
-| `POST` | `/api/claime` | Взять следующий тикет оператору |
-| `PATCH` | `/api/close` | Закрытие тикета оператором; обработчик пока передаёт ID `0`, поэтому запрос не закрывает тикет |
+| `POST` | `/api/claim` | Взять следующий тикет оператору |
+| `PATCH` | `/api/close` | Закрытие тикета оператором |
 
 Для регистрации передаются `name`, `email`, `password`; для входа — `email` и `password`. Создание тикета принимает `title` и `decription`: именно такое имя JSON-поля задано в текущем DTO. Длина заголовка — от 5 до 30 символов, описания — до 150.
 
