@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"os"
 	"tmaster/internal/api/handlers"
 	"tmaster/internal/api/router"
@@ -76,7 +75,7 @@ func main() {
 	handler := handlers.NewHandler(service, appLogger)
 	router := router.NewRouter(handler, jwtManager, cfg, appLogger)
 
-	if err := http.ListenAndServe(cfg.Server.Port, router); err != nil {
+	if err := router.Run(cfg.Server.Port); err != nil {
 		appLogger.Error(
 			"failed start service",
 			"error", err,

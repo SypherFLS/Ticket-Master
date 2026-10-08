@@ -8,135 +8,111 @@ import (
 	// "runtime/debug"
 	"strings"
 	"time"
-	"tmaster/internal/api/utils/helpers"
-	"tmaster/internal/api/utils/selfwriter"
 	"tmaster/internal/auth"
 	"tmaster/internal/constants"
 	"tmaster/internal/constants/params"
 	"uuid"
+
+	"github.com/gin-gonic/gin"
 )
 
-type Middleware func(http.Handler) http.Handler
-
-func Chain(h http.Handler, m ...Middleware) http.Handler {
-	for i := len(m) - 1; i >= 0; i-- {
-		h = m[i](h)
-	}
-
-	return h
-}
-
-func CommonChain(h http.Handler, timeout int, logger *slog.Logger) http.Handler {
-	return Chain(
-		h,
-		TraceMiddleware,
-		LoggingMiddleware(logger),
-		RecoverMiddleware(logger),
-		TimeoutMiddleware(timeout),
-	)
-}
-
-func TraceMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TraceMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		requestID := uuid.New().String()
+
 		ctx := context.WithValue(
-			r.Context(),
+			c.Request.Context(),
 			constants.RequestIDKey,
 			requestID,
 		)
 
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func TimeoutMiddleware(timeout int) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeout)*time.Second)
-			defer cancel()
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 	}
 }
 
-func LoggingMiddleware(logger *slog.Logger) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			sw := &selfwriter.SelfWriter{
-				ResponseWriter: w,
-				Code:           200,
+func TimeoutMiddleware(timeout int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(timeout)*time.Second)
+		defer cancel()
+
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
+func LoggingMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+
+		requestID := params.GetRequestID(c.Request.Context())
+		requestLogger := logger.With(
+			"request_id", requestID,
+		)
+
+		ctx := context.WithValue(c.Request.Context(), constants.RequestLogger, requestLogger)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+
+		requestLogger.Info(
+			"request completed",
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
+			"duration", time.Since(start),
+		)
+	}
+}
+
+func RecoverMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				requestID := params.GetRequestID(c.Request.Context())
+				logger.Error(
+					"panic recovered",
+					"request_id", requestID,
+					"error", err,
+				)
+				// debug.PrintStack()
+
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+					"error": "internal server error",
+				})
+				return
 			}
-			requestID := params.GetRequestID(r.Context())
-			requestLogger := logger.With(
-				"request_id", requestID,
-			)
+		}()
 
-			ctx := context.WithValue(r.Context(), constants.RequestLogger, requestLogger)
-			next.ServeHTTP(sw, r.WithContext(ctx))
-
-			requestLogger.Info(
-				"request completed",
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", sw.Code,
-				"duration", time.Since(start),
-			)
-		})
-	}
-}
-
-func RecoverMiddleware(logger *slog.Logger) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			defer func() {
-				if err := recover(); err != nil {
-					requestID := params.GetRequestID(r.Context())
-					logger.Error(
-						"panic recovered",
-						"request_id", requestID,
-						"error", err,
-					)
-					// debug.PrintStack()
-
-					helpers.WriteError(w, 500, "panic")
-					return
-				}
-			}()
-
-			next.ServeHTTP(w, r)
-		})
+		c.Next()
 	}
 }
 
 const bearer = "Bearer "
 
-func AuthMiddleware(jwtManager *auth.JWTManager) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
+func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
 
-			if authHeader == "" {
-				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
-				return
-			}
-			if !strings.HasPrefix(authHeader, bearer) {
-				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
-				return
-			}
+		if authHeader == "" || !strings.HasPrefix(authHeader, bearer) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error" : "invalid authorization header",
+			})
+			return
+		}
 
-			token := strings.TrimPrefix(authHeader, bearer)
+		token := strings.TrimPrefix(authHeader, bearer)
 
-			userID, userRole, err := jwtManager.Validate(token)
-			if err != nil {
-				helpers.WriteError(w, http.StatusUnauthorized, "invalid authorization header")
-				return
-			}
-			ctx := context.WithValue(r.Context(), constants.UserIDKey, userID)
-			ctx2 := context.WithValue(ctx, constants.UserRoleKey, userRole)
-			next.ServeHTTP(w, r.WithContext(ctx2))
-		})
+		userID, userRole, err := jwtManager.Validate(token)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error" : "invalid authorization header",
+			})
+			return
+		}
+		ctx := context.WithValue(c.Request.Context(), constants.UserIDKey, userID)
+		ctx2 := context.WithValue(ctx, constants.UserRoleKey, userRole)
+		
+		c.Request = c.Request.WithContext(ctx2)
+		c.Next()
 	}
 }

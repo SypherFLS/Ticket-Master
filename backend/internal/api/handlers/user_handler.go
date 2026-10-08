@@ -1,82 +1,96 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"tmaster/internal/api/maperrors"
+	"github.com/gin-gonic/gin"
 	"tmaster/internal/api/utils/helpers"
-	"tmaster/internal/constants/params"
 
 	"tmaster/internal/dto"
 	"tmaster/internal/validation"
 )
 
-func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LoginHandler(c *gin.Context) {
 	var logData dto.LoginDTO
 
-	if err := json.NewDecoder(r.Body).Decode(&logData); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&logData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	if err := validation.Validate(logData); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	token, err := h.service.LoginService(r.Context(), logData)
+	token, err := h.service.LoginService(c.Request.Context(), logData)
 
 	if err != nil {
-		helpers.WriteError(w, maperrors.StatusFromErr(err), err.Error())
+		c.JSON(maperrors.StatusFromErr(err), gin.H{
+			"error" : err.Error(),
+		})
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(token); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	c.JSON(http.StatusOK, token)
 }
 
-func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RegisterHandler(c *gin.Context) {
 	var user dto.RegisterDTO
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		helpers.WriteError(w, maperrors.StatusFromErr(err), err.Error())
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(maperrors.StatusFromErr(err), gin.H{
+			"error" : err.Error(),
+		})
 		return
 	}
 
 	if err := validation.Validate(user); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	err := h.service.RegisterService(r.Context(), user)
+	err := h.service.RegisterService(c.Request.Context(), user)
 	if err != nil {
-		helpers.WriteError(w, maperrors.StatusFromErr(err), err.Error())
+		c.JSON(maperrors.StatusFromErr(err), gin.H{
+			"error" : err.Error(),
+		})
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	c.Status(http.StatusCreated)
 }
 
-func (h *Handler) SetRoleHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SetRoleHandler(c *gin.Context) {
 	var ru dto.RequestUser
 
-	_, user_role, err := params.GetAllParams(r)
+	_, user_role, err := helpers.GetAllParams(c)
 	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&ru); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&ru); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	if err := h.service.SetRoleService(r.Context(), user_role, ru.Email, ru.Role); err != nil {
-		helpers.WriteError(w, maperrors.StatusFromErr(err), err.Error())
+	if err := h.service.SetRoleService(c.Request.Context(), user_role, ru.Email, ru.Role); err != nil {
+		c.JSON(maperrors.StatusFromErr(err), gin.H{
+			"error" : err.Error(),
+		})
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
+	c.Status(http.StatusAccepted)
 }

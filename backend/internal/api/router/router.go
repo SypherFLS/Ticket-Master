@@ -2,43 +2,42 @@ package router
 
 import (
 	"log/slog"
-	"net/http"
 	"tmaster/internal/api/handlers"
 	"tmaster/internal/api/middlewares"
+
+	"github.com/gin-gonic/gin"
 
 	"tmaster/internal/auth"
 	"tmaster/internal/config"
 )
 
-func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Config, logger *slog.Logger) http.Handler {
-	root := http.NewServeMux()
+func NewRouter(h *handlers.Handler, jwtManager *auth.JWTManager, cfg config.Config, logger *slog.Logger) *gin.Engine {
+	router := gin.New()
 
-	public := http.NewServeMux()
-	private := http.NewServeMux()
-
-	public.Handle("POST /register", http.HandlerFunc(h.RegisterHandler))
-	public.Handle("POST /login", http.HandlerFunc(h.LoginHandler))
-
-	private.Handle("POST /create", http.HandlerFunc(h.CreateTicketHandler))
-	private.Handle("GET /tickets", http.HandlerFunc(h.GetOwnTicketsHandler))
-	private.Handle("POST /claime", http.HandlerFunc(h.ClaimNextTicketHandler))
-	private.Handle("PATCH /close", http.HandlerFunc(h.CloseTicketHandler))
-	private.Handle("GET /tickets_queue", http.HandlerFunc(h.GetNewTicketsHandler))
-
-	publicChain := middlewares.CommonChain(
-		public,
-		cfg.Server.Timeout,
-		logger,
-	)
-	privateChain := middlewares.CommonChain(
-		middlewares.AuthMiddleware(jwtManager)(
-			private,
-		),
-		cfg.Server.Timeout,
-		logger,
+	router.Use(
+		middlewares.TraceMiddleware(),
+		middlewares.LoggingMiddleware(logger),
+		middlewares.RecoverMiddleware(logger),
+		middlewares.TimeoutMiddleware(cfg.Server.Timeout),
 	)
 
-	root.Handle("/api/", http.StripPrefix("/api", privateChain))
-	root.Handle("/auth/", http.StripPrefix("/auth", publicChain))
-	return root
+	authGroup := router.Group("/auth")
+	{
+		authGroup.POST("/register", h.RegisterHandler)
+		authGroup.POST("/login", h.LoginHandler)
+	}
+
+	apiGroup := router.Group("/api")
+	apiGroup.Use(
+		middlewares.AuthMiddleware(jwtManager),
+	)
+	{
+		apiGroup.POST("/create", h.CreateTicketHandler)
+		apiGroup.GET("/tickets", h.GetOwnTicketsHandler)
+		apiGroup.POST("/claim", h.ClaimNextTicketHandler)
+		apiGroup.PATCH("/close", h.CloseTicketHandler)
+		apiGroup.GET("/tickets_queue", h.GetNewTicketsHandler)
+	}
+
+	return router
 }

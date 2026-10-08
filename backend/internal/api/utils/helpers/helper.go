@@ -1,31 +1,89 @@
 package helpers
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
+	"github.com/gin-gonic/gin"
+	"strconv"
+	"tmaster/internal/apperrors"
+	"tmaster/internal/constants"
+	"tmaster/internal/dto"
 )
 
-type ErrorResponse struct {
-	Error string `json:"error"`
+func GetAllParams(c *gin.Context) (int, constants.UserRole, error) {
+	userID, err := GetUserID(c)
+	userRole, erro := GetUserRole(c)
+
+	if err != nil {
+		return 0, "", err
+	} else if erro != nil {
+		return 0, "", erro
+	}
+
+	return userID, userRole, nil
 }
 
-func WriteJSON(w http.ResponseWriter, code int, data any) {
-	w.Header().Set(
-		"Content-Type",
-		"encoding/json",
-	)
+func GetUserRole(c *gin.Context) (constants.UserRole, error) {
+	value, exists := c.Get(constants.UserRoleKey)
 
-	w.WriteHeader(code)
+	userRole, ok := value.(string)
 
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Printf("failed encoding with error %v\n", err)
+	if !ok || !exists {
+		return "", apperrors.WrongParamType
+	}
+
+	return constants.UserRole(userRole), nil
+}
+
+func GetUserID(c *gin.Context) (int, error) {
+	value, exists := c.Get(constants.UserIDKey)
+
+	if !exists {
+		return 0, apperrors.BlankUserID
+	}
+
+	userID, ok := value.(int)
+
+	if !ok {
+		return 0, apperrors.WrongParamType
+	}
+
+	return userID, nil
+}
+
+func GetPagData(c *gin.Context) dto.PaginationData {
+	return dto.PaginationData{
+		Limit:  GetLimit(c),
+		Offset: GetOffset(c),
 	}
 }
 
-func WriteError(w http.ResponseWriter, code int, msg string) {
-	resp := ErrorResponse{
-		Error: msg,
+func GetLimit(c *gin.Context) int {
+	raw_lim := c.Request.URL.Query().Get("limit")
+
+	if raw_lim == "" {
+		return 10
 	}
-	WriteJSON(w, code, resp)
+
+	lim, err := strconv.Atoi(raw_lim)
+
+	if err != nil {
+		return 10
+	}
+
+	return lim
+}
+
+func GetOffset(c *gin.Context) int {
+	raw_off := c.Request.URL.Query().Get("offset")
+
+	if raw_off == "" {
+		return 0
+	}
+
+	off, err := strconv.Atoi(raw_off)
+
+	if err != nil {
+		return 0
+	}
+
+	return off
 }
