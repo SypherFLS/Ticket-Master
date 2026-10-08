@@ -5,13 +5,13 @@ import (
 	"os"
 )
 
-func New( ) *slog.Logger{
+func New() *slog.Logger {
 	handler := slog.NewJSONHandler(
-		os.Stdout, 
+		os.Stdout,
 		&slog.HandlerOptions{
-        	Level: slog.LevelInfo,
+			Level:     slog.LevelInfo,
 			AddSource: true,
-    	},
+		},
 	)
 
 	logger := slog.New(handler)

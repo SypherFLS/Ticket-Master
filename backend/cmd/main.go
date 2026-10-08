@@ -19,7 +19,7 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		appLogger.Error(
-			"godotenv error:", 
+			"godotenv error:",
 			"error", err,
 		)
 		os.Exit(1)
@@ -34,7 +34,7 @@ func main() {
 		configEnv = "CONFIG_PATH_DOCKER"
 	default:
 		appLogger.Error(
-			"wrong work env", 
+			"wrong work env",
 			"error", "wrong config_env",
 			"env", env,
 		)
@@ -45,7 +45,7 @@ func main() {
 
 	if err != nil {
 		appLogger.Error(
-			"failed init config with error", 
+			"failed init config with error",
 			"error", err,
 			"config path", path,
 		)
@@ -56,7 +56,7 @@ func main() {
 
 	if err != nil {
 		appLogger.Error(
-			"failed init to db with error", 
+			"failed init to db with error",
 			"error", err,
 		)
 		os.Exit(1)

@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"tmaster/internal/api/maperrors"
-	"github.com/gin-gonic/gin"
 	"tmaster/internal/api/utils/helpers"
 
 	"tmaster/internal/dto"
@@ -31,7 +31,7 @@ func (h *Handler) LoginHandler(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -44,7 +44,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -59,7 +59,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	err := h.service.RegisterService(c.Request.Context(), user)
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -87,7 +87,7 @@ func (h *Handler) SetRoleHandler(c *gin.Context) {
 
 	if err := h.service.SetRoleService(c.Request.Context(), user_role, ru.Email, ru.Role); err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}

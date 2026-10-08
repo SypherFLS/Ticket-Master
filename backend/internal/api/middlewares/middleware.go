@@ -95,7 +95,7 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 
 		if authHeader == "" || !strings.HasPrefix(authHeader, bearer) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error" : "invalid authorization header",
+				"error": "invalid authorization header",
 			})
 			return
 		}
@@ -105,13 +105,13 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 		userID, userRole, err := jwtManager.Validate(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error" : "invalid authorization header",
+				"error": "invalid authorization header",
 			})
 			return
 		}
 		ctx := context.WithValue(c.Request.Context(), constants.UserIDKey, userID)
 		ctx2 := context.WithValue(ctx, constants.UserRoleKey, userRole)
-		
+
 		c.Request = c.Request.WithContext(ctx2)
 		c.Next()
 	}

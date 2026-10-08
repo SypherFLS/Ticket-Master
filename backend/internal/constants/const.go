@@ -19,9 +19,8 @@ const (
 type contextKey string
 
 const (
-	RequestIDKey contextKey = "request_id"
-	UserIDKey    contextKey = "userID"
-	UserRoleKey  contextKey = "userRole"
+	RequestIDKey  contextKey = "request_id"
+	UserIDKey     contextKey = "userID"
+	UserRoleKey   contextKey = "userRole"
 	RequestLogger contextKey = "requestLogger"
 )
-

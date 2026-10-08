@@ -37,7 +37,7 @@ func (h *Handler) CreateTicketHandler(c *gin.Context) {
 	id, err := h.service.CreateTicketService(c.Request.Context(), ticket, user_id, user_role)
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -63,7 +63,7 @@ func (h *Handler) GetOwnTicketsHandler(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -85,7 +85,7 @@ func (h *Handler) GetNewTicketsHandler(c *gin.Context) {
 	res, err := h.service.GetNewTicketsService(c.Request.Context(), user_role, pag_data)
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -104,7 +104,7 @@ func (h *Handler) ClaimNextTicketHandler(c *gin.Context) {
 	res, err := h.service.ClaimNextTicketService(c.Request.Context(), user_id, user_role)
 	if err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -122,7 +122,7 @@ func (h *Handler) CloseTicketHandler(c *gin.Context) {
 
 	if err := h.service.CloseTicketService(c.Request.Context(), user_id, 0, user_role); err != nil {
 		c.JSON(maperrors.StatusFromErr(err), gin.H{
-			"error" : err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
