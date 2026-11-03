@@ -45,7 +45,7 @@ func (h *Handler) CreateTicketHandler(c *gin.Context) {
 		ID: id,
 	}
 
-	c.JSON(201, resp)
+	c.JSON(http.StatusCreated, resp)
 }
 
 func (h *Handler) GetOwnTicketsHandler(c *gin.Context) {
@@ -68,7 +68,7 @@ func (h *Handler) GetOwnTicketsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) GetNewTicketsHandler(c *gin.Context) {
@@ -89,7 +89,7 @@ func (h *Handler) GetNewTicketsHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) ClaimNextTicketHandler(c *gin.Context) {
@@ -108,7 +108,7 @@ func (h *Handler) ClaimNextTicketHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) CloseTicketHandler(c *gin.Context) {

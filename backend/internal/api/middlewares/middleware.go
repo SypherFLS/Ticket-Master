@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	// "runtime/debug"
 	"strings"
 	"time"
 	"tmaster/internal/auth"
@@ -74,7 +73,6 @@ func RecoverMiddleware(logger *slog.Logger) gin.HandlerFunc {
 					"request_id", requestID,
 					"error", err,
 				)
-				// debug.PrintStack()
 
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
