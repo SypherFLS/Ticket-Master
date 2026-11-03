@@ -10,6 +10,16 @@ import (
 	"tmaster/internal/validation"
 )
 
+// LoginHandler handles user authentication.
+// @Summary Login user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.LoginDTO true "User credentials"
+// @Success 200 {string} string "JWT token"
+// @Failure 400 {object} map[string]string "Validation or parse error"
+// @Failure 401 {object} map[string]string "Invalid credentials"
+// @Router /auth/login [post]
 func (h *Handler) LoginHandler(c *gin.Context) {
 	var logData dto.LoginDTO
 
@@ -39,6 +49,16 @@ func (h *Handler) LoginHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, token)
 }
 
+// RegisterHandler registers a new user.
+// @Summary Register user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterDTO true "User registration data"
+// @Success 201 {string} string "User created"
+// @Failure 400 {object} map[string]string "Validation or parse error"
+// @Failure 409 {object} map[string]string "User already exists"
+// @Router /auth/register [post]
 func (h *Handler) RegisterHandler(c *gin.Context) {
 	var user dto.RegisterDTO
 

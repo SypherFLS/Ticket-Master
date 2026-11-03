@@ -82,6 +82,8 @@ docker compose --env-file backend/.env down
 
 `GET /api/tickets` и `/api/tickets_queue` принимают `limit` и `offset`. По умолчанию используются `limit=10` и `offset=0`.
 
+Спецификация OpenAPI генерируется автоматически по аннотациям Gin и доступна по адресу `/swagger/index.html` после запуска backend. Исходный файл лежит в `backend/docs/swagger.yaml` и `backend/docs/swagger.json`.
+
 ## Схема PostgreSQL
 
 Схема создаётся Goose-миграциями из `backend/migrations`. GORM используется для запросов; автоматического создания или обновления схемы через GORM нет.

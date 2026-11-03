@@ -1,5 +1,14 @@
 package main
 
+// @title Ticket Master API
+// @version 1.0
+// @description API for user registration and ticket workflow management.
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
 import (
 	"os"
 	"tmaster/internal/api/handlers"

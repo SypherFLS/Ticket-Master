@@ -1,5 +1,10 @@
+*main
+
 .env
 *config.yaml
-*main
+
+!.env.example
+!config.example.yaml
+
 ticket_master_repository_pipelines.md
 tasks.md

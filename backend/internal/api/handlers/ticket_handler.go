@@ -9,6 +9,17 @@ import (
 	"tmaster/internal/validation"
 )
 
+// CreateTicketHandler creates a new ticket for the authenticated user.
+// @Summary Create ticket
+// @Tags tickets
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.TicketDTO true "Ticket payload"
+// @Success 201 {object} dto.IDResponse
+// @Failure 400 {object} map[string]string "Validation or parse error"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /api/create [post]
 func (h *Handler) CreateTicketHandler(c *gin.Context) {
 	var ticket dto.TicketDTO
 
@@ -48,6 +59,15 @@ func (h *Handler) CreateTicketHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// GetOwnTicketsHandler returns all tickets owned by the authenticated user.
+// @Summary List own tickets
+// @Tags tickets
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} dto.UserTicketResponse
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /api/tickets [get]
 func (h *Handler) GetOwnTicketsHandler(c *gin.Context) {
 	user_id, user_role, err := helpers.GetAllParams(c)
 	if err != nil {
@@ -71,6 +91,15 @@ func (h *Handler) GetOwnTicketsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetNewTicketsHandler returns the queue of new tickets available for operators.
+// @Summary List new tickets queue
+// @Tags tickets
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} dto.OperatorTicketResponse
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /api/tickets_queue [get]
 func (h *Handler) GetNewTicketsHandler(c *gin.Context) {
 	_, user_role, err := helpers.GetAllParams(c)
 	if err != nil {
@@ -92,6 +121,15 @@ func (h *Handler) GetNewTicketsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// ClaimNextTicketHandler assigns the next available ticket to the authenticated operator.
+// @Summary Claim next ticket
+// @Tags tickets
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} dto.OperatorTicketResponse
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /api/claim [post]
 func (h *Handler) ClaimNextTicketHandler(c *gin.Context) {
 	user_id, user_role, err := helpers.GetAllParams(c)
 	if err != nil {
@@ -111,6 +149,15 @@ func (h *Handler) ClaimNextTicketHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// CloseTicketHandler closes a ticket assigned to the authenticated operator.
+// @Summary Close ticket
+// @Tags tickets
+// @Security BearerAuth
+// @Produce json
+// @Success 204 {string} string "Ticket closed"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /api/close [patch]
 func (h *Handler) CloseTicketHandler(c *gin.Context) {
 	user_id, user_role, err := helpers.GetAllParams(c)
 	if err != nil {
